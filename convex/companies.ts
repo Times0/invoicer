@@ -160,3 +160,56 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+// Create company (for n8n integration - accepts userId directly)
+export const createCompany = mutation({
+  args: {
+    userId: v.string(),
+    name: v.string(),
+    siret: v.string(),
+    email: v.string(),
+    address: v.string(),
+    city: v.string(),
+    zip: v.string(),
+    website: v.string(),
+    isMyCompany: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, ...companyData } = args;
+
+    // If marking this as "my company", unset it on all other companies for this user
+    if (args.isMyCompany) {
+      const existingCompanies = await ctx.db
+        .query("companies")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("userId"), userId),
+            q.eq(q.field("isMyCompany"), true)
+          )
+        )
+        .collect();
+
+      for (const company of existingCompanies) {
+        await ctx.db.patch(company._id, { isMyCompany: false });
+      }
+    }
+
+    const companyId = await ctx.db.insert("companies", {
+      userId,
+      ...companyData,
+    });
+
+    return { companyId };
+  },
+});
+
+// List companies (for n8n integration - accepts userId directly)
+export const listCompanies = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db
+      .query("companies")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+  },
+});

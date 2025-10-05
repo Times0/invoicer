@@ -225,13 +225,96 @@ export const createInvoice = mutation({
 });
 
 export const listInvoices = query({
-  args: { userId: v.string(), limit: v.optional(v.number()) },
-  handler: async (ctx, { userId, limit }) => {
-    const res = await ctx.db
+  args: {
+    userId: v.string(),
+    limit: v.optional(v.number()),
+    clientId: v.optional(v.id("companies")),
+  },
+  handler: async (ctx, { userId, limit, clientId }) => {
+    let query = ctx.db
       .query("invoices")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(limit ?? 50);
+      .order("desc");
+
+    if (clientId) {
+      query = query.filter((q) => q.eq(q.field("clientId"), clientId));
+    }
+
+    const res = await query.take(limit ?? 50);
     return res;
+  },
+});
+
+// Duplicate the last invoice for a specific client
+export const duplicateLastInvoice = mutation({
+  args: {
+    userId: v.string(),
+    clientId: v.id("companies"),
+    invoiceNumber: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Find the last invoice for this client
+    const lastInvoice = await ctx.db
+      .query("invoices")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("clientId"), args.clientId))
+      .order("desc")
+      .first();
+
+    if (!lastInvoice) {
+      throw new Error("No previous invoice found for this client");
+    }
+
+    // Generate new invoice number if not provided
+    const invoiceNumber = args.invoiceNumber || `INV-${Date.now()}`;
+
+    // Create a new invoice with the same details but as draft
+    const newInvoiceId = await ctx.db.insert("invoices", {
+      userId: args.userId,
+      invoiceNumber,
+      clientId: args.clientId,
+      currency: lastInvoice.currency,
+      total: lastInvoice.total,
+      status: "draft",
+    });
+
+    return { invoiceId: newInvoiceId, invoiceNumber };
+  },
+});
+
+// Change invoice status (for n8n integration)
+export const changeStatus = mutation({
+  args: {
+    userId: v.string(),
+    invoiceId: v.id("invoices"),
+    status: statusValidator,
+  },
+  handler: async (ctx, args) => {
+    // Verify the invoice belongs to the user
+    const invoice = await ctx.db.get(args.invoiceId);
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+    if (invoice.userId !== args.userId) {
+      throw new Error("Unauthorized");
+    }
+
+    const updates: any = { status: args.status };
+
+    // Set the appropriate timestamp based on status
+    switch (args.status) {
+      case "finalized":
+        updates.finalizedAt = Date.now();
+        break;
+      case "paid":
+        updates.paidAt = Date.now();
+        break;
+      case "cancelled":
+        updates.cancelledAt = Date.now();
+        break;
+    }
+
+    await ctx.db.patch(args.invoiceId, updates);
+    return { success: true };
   },
 });
