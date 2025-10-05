@@ -13,8 +13,11 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as apiKeys from "../apiKeys.js";
 import type * as companies from "../companies.js";
+import type * as http from "../http.js";
 import type * as invoices from "../invoices.js";
+import type * as lib_crypto from "../lib/crypto.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -25,8 +28,11 @@ import type * as invoices from "../invoices.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  apiKeys: typeof apiKeys;
   companies: typeof companies;
+  http: typeof http;
   invoices: typeof invoices;
+  "lib/crypto": typeof lib_crypto;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

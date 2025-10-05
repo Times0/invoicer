@@ -14,6 +14,7 @@ import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InvoicesIndexRouteImport } from './routes/invoices/index'
 import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
+import { Route as ApiKeysIndexRouteImport } from './routes/api-keys/index'
 import { Route as InvoicesNewRouteImport } from './routes/invoices/new'
 import { Route as CompaniesNewRouteImport } from './routes/companies/new'
 import { Route as InvoicesInvoiceIdIndexRouteImport } from './routes/invoices/$invoiceId/index'
@@ -43,6 +44,11 @@ const InvoicesIndexRoute = InvoicesIndexRouteImport.update({
 const CompaniesIndexRoute = CompaniesIndexRouteImport.update({
   id: '/companies/',
   path: '/companies/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKeysIndexRoute = ApiKeysIndexRouteImport.update({
+  id: '/api-keys/',
+  path: '/api-keys/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesNewRoute = InvoicesNewRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/companies/new': typeof CompaniesNewRoute
   '/invoices/new': typeof InvoicesNewRoute
+  '/api-keys': typeof ApiKeysIndexRoute
   '/companies': typeof CompaniesIndexRoute
   '/invoices': typeof InvoicesIndexRoute
   '/companies/$companyId/edit': typeof CompaniesCompanyIdEditRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/companies/new': typeof CompaniesNewRoute
   '/invoices/new': typeof InvoicesNewRoute
+  '/api-keys': typeof ApiKeysIndexRoute
   '/companies': typeof CompaniesIndexRoute
   '/invoices': typeof InvoicesIndexRoute
   '/companies/$companyId/edit': typeof CompaniesCompanyIdEditRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/companies/new': typeof CompaniesNewRoute
   '/invoices/new': typeof InvoicesNewRoute
+  '/api-keys/': typeof ApiKeysIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/invoices/': typeof InvoicesIndexRoute
   '/companies/$companyId/edit': typeof CompaniesCompanyIdEditRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/companies/new'
     | '/invoices/new'
+    | '/api-keys'
     | '/companies'
     | '/invoices'
     | '/companies/$companyId/edit'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/companies/new'
     | '/invoices/new'
+    | '/api-keys'
     | '/companies'
     | '/invoices'
     | '/companies/$companyId/edit'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/companies/new'
     | '/invoices/new'
+    | '/api-keys/'
     | '/companies/'
     | '/invoices/'
     | '/companies/$companyId/edit'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   CompaniesNewRoute: typeof CompaniesNewRoute
   InvoicesNewRoute: typeof InvoicesNewRoute
+  ApiKeysIndexRoute: typeof ApiKeysIndexRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
   InvoicesIndexRoute: typeof InvoicesIndexRoute
   CompaniesCompanyIdEditRoute: typeof CompaniesCompanyIdEditRoute
@@ -195,6 +208,13 @@ declare module '@tanstack/react-router' {
       path: '/companies'
       fullPath: '/companies'
       preLoaderRoute: typeof CompaniesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api-keys/': {
+      id: '/api-keys/'
+      path: '/api-keys'
+      fullPath: '/api-keys'
+      preLoaderRoute: typeof ApiKeysIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoices/new': {
@@ -241,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   CompaniesNewRoute: CompaniesNewRoute,
   InvoicesNewRoute: InvoicesNewRoute,
+  ApiKeysIndexRoute: ApiKeysIndexRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,
   InvoicesIndexRoute: InvoicesIndexRoute,
   CompaniesCompanyIdEditRoute: CompaniesCompanyIdEditRoute,

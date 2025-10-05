@@ -1,3 +1,4 @@
+// convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -19,7 +20,7 @@ export default defineSchema({
     zip: v.string(),
     website: v.string(),
     isMyCompany: v.optional(v.boolean()),
-  }),
+  }).index("by_user", ["userId"]),
 
   invoices: defineTable({
     userId: v.string(),
@@ -31,5 +32,15 @@ export default defineSchema({
     finalizedAt: v.optional(v.number()),
     paidAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
-  }),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_invoiceNumber", ["userId", "invoiceNumber"]),
+
+  apiKeys: defineTable({
+    userId: v.string(),
+    keyHash: v.string(),
+    revoked: v.optional(v.boolean()),
+  })
+    .index("by_keyHash", ["keyHash"])
+    .index("by_userId", ["userId"]),
 });

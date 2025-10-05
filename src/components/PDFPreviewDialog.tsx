@@ -30,7 +30,7 @@ export function PDFPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[80vh] flex flex-col p-0">
+      <DialogContent className="h-[80vh] flex flex-col p-0 max-w-[1200px] w-[90vw] min-w-[min(900px,98vw)]">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">{title}</DialogTitle>
         </DialogHeader>

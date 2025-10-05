@@ -66,6 +66,7 @@ const tabs = [
   { label: "Dashboard", to: "/" },
   { label: "Companies", to: "/companies" },
   { label: "Invoices", to: "/invoices" },
+  { label: "API Keys", to: "/api-keys" },
 ];
 
 function RootLayout() {

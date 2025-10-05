@@ -2,9 +2,17 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { statusValidator } from "./schema";
 
-// Fetch all invoices
-export const list = query(async ({ db }) => {
-  return await db.query("invoices").collect();
+export const list = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    return await ctx.db
+      .query("invoices")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
+  },
 });
 
 // Get a single invoice by ID
@@ -117,5 +125,113 @@ export const remove = mutation({
   args: { id: v.id("invoices") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+// Create invoice (for n8n integration - accepts userId directly)
+export const create = mutation({
+  args: {
+    userId: v.string(),
+    clientId: v.id("companies"),
+    currency: v.string(),
+    total: v.number(),
+    status: v.optional(statusValidator),
+    invoiceNumber: v.optional(v.string()),
+    finalize: v.optional(v.boolean()),
+    finalizedAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, clientId, currency, total, finalize, ...rest } = args;
+
+    // Generate invoice number if not provided
+    const invoiceNumber = rest.invoiceNumber || `INV-${Date.now()}`;
+
+    // Determine status
+    let status = rest.status || "draft";
+    let finalizedAt = rest.finalizedAt;
+
+    if (finalize && status === "draft") {
+      status = "finalized";
+      finalizedAt = Date.now();
+    }
+
+    const invoiceId = await ctx.db.insert("invoices", {
+      userId,
+      clientId,
+      invoiceNumber,
+      currency,
+      total,
+      status,
+      finalizedAt,
+      paidAt: rest.paidAt,
+      cancelledAt: rest.cancelledAt,
+    });
+
+    return { id: invoiceId, invoiceNumber };
+  },
+});
+
+export const createInvoice = mutation({
+  args: {
+    userId: v.string(),
+    invoiceNumber: v.string(),
+    clientId: v.id("companies"),
+    currency: v.string(),
+    total: v.number(),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("finalized"),
+        v.literal("paid"),
+        v.literal("cancelled")
+      )
+    ),
+    timestamps: v.optional(
+      v.object({
+        finalizedAt: v.optional(v.number()),
+        paidAt: v.optional(v.number()),
+        cancelledAt: v.optional(v.number()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const status = args.status ?? "draft";
+
+    // Optional: ensure invoice numbers are unique per user
+    const existing = await ctx.db
+      .query("invoices")
+      .withIndex("by_user_invoiceNumber", (q) =>
+        q.eq("userId", args.userId).eq("invoiceNumber", args.invoiceNumber)
+      )
+      .first();
+    if (existing)
+      throw new Error("Invoice number already exists for this user.");
+
+    const invoiceId = await ctx.db.insert("invoices", {
+      userId: args.userId,
+      invoiceNumber: args.invoiceNumber,
+      clientId: args.clientId,
+      status,
+      currency: args.currency,
+      total: args.total,
+      finalizedAt: args.timestamps?.finalizedAt,
+      paidAt: args.timestamps?.paidAt,
+      cancelledAt: args.timestamps?.cancelledAt,
+    });
+    return { invoiceId };
+  },
+});
+
+export const listInvoices = query({
+  args: { userId: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, { userId, limit }) => {
+    const res = await ctx.db
+      .query("invoices")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(limit ?? 50);
+    return res;
   },
 });

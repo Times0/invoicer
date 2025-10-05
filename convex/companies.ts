@@ -2,8 +2,15 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // Fetch all companies
-export const list = query(async ({ db }) => {
-  return await db.query("companies").collect();
+export const list = query(async ({ db, auth }) => {
+  const identity = await auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Unauthorized");
+  }
+  return await db
+    .query("companies")
+    .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+    .collect();
 });
 
 // Get "my company" (the company marked as the invoice issuer)
