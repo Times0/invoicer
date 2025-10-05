@@ -11,7 +11,10 @@
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check"
+    "check": "biome check",
+    "preview": "vite preview",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.1",
@@ -48,6 +51,7 @@
     "convex": "^1.27.3",
     "date-fns": "^4.1.0",
     "downshift": "^9.0.10",
+    "e": "^0.2.33",
     "highlight.js": "^11.11.1",
     "jspdf": "^3.0.3",
     "lucide-react": "^0.544.0",
@@ -70,6 +74,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
+    "@cloudflare/vite-plugin": "^1.13.10",
     "@tanstack/devtools-event-client": "^0.3.2",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
@@ -81,6 +86,7 @@
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vitest": "^3.0.5",
-    "web-vitals": "^5.1.0"
+    "web-vitals": "^5.1.0",
+    "wrangler": "^4.42.0"
   }
 }
