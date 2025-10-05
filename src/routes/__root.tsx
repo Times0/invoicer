@@ -12,6 +12,7 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import appCss from "../styles.css?url";
 import Tabs from "@/components/tabs";
 import Header from "@/components/Header";
+import { Toaster } from "@/components/ui/toaster";
 
 interface MyRouterContext {
   queryClient: QueryClient;
@@ -52,6 +53,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <ConvexProvider>
           {children}
+          <Toaster />
           <TanStackDevtools
             config={{
               position: "bottom-right",

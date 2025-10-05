@@ -69,6 +69,33 @@ export const updateStatus = mutation({
   },
 });
 
+export const finalize = mutation({
+  args: { id: v.id("invoices") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      finalizedAt: Date.now(),
+      status: "finalized",
+    });
+  },
+});
+
+export const cancel = mutation({
+  args: { id: v.id("invoices") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      cancelledAt: Date.now(),
+      status: "cancelled",
+    });
+  },
+});
+
+export const pay = mutation({
+  args: { id: v.id("invoices") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { paidAt: Date.now(), status: "paid" });
+  },
+});
+
 // Remove an invoice
 export const remove = mutation({
   args: { id: v.id("invoices") },

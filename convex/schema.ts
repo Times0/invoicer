@@ -3,9 +3,9 @@ import { v } from "convex/values";
 
 export const statusValidator = v.union(
   v.literal("draft"),
-  v.literal("validated"),
+  v.literal("finalized"),
   v.literal("paid"),
-  v.literal("cancelled")
+  v.literal("cancelled"),
 );
 
 export default defineSchema({
@@ -21,9 +21,12 @@ export default defineSchema({
   }),
   invoices: defineTable({
     invoiceNumber: v.string(),
-    clientId: v.id("companies"), // Reference to client company
+    clientId: v.id("companies"),
     status: statusValidator,
     currency: v.string(),
     total: v.number(),
+    finalizedAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
   }),
 });

@@ -4,7 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { InvoiceActions } from "@/components/InvoiceActions";
 import { InvoiceDetails } from "@/components/InvoiceDetails";
-import { ValidateInvoiceDialog } from "@/components/ValidateInvoiceDialog";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -13,14 +13,18 @@ import {
   openInvoicePDFInNewTab,
 } from "@/lib/pdf-generator";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/invoices/$invoiceId/")({
   component: RouteComponent,
 });
 
+type DialogType = "finalize" | "cancel" | "pay" | null;
+
 function RouteComponent() {
   const { invoiceId } = Route.useParams();
-  const [showValidateDialog, setShowValidateDialog] = useState(false);
+  const [activeDialog, setActiveDialog] = useState<DialogType>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const invoice = useQuery(api.invoices.get, {
     id: invoiceId as Id<"invoices">,
@@ -31,38 +35,117 @@ function RouteComponent() {
     invoice ? { id: invoice.clientId } : "skip"
   );
 
-  const updateStatus = useMutation(api.invoices.updateStatus);
-  const [isValidating, setIsValidating] = useState(false);
+  const finalizeInvoice = useMutation(api.invoices.finalize);
+  const cancelInvoice = useMutation(api.invoices.cancel);
+  const payInvoice = useMutation(api.invoices.pay);
 
-  const handleValidate = async () => {
+  const handleFinalize = async () => {
     if (!invoice) return;
 
-    setIsValidating(true);
+    setIsProcessing(true);
     try {
-      await updateStatus({
+      await finalizeInvoice({
         id: invoice._id,
-        status: "validated",
       });
-      setShowValidateDialog(false);
+      toast.success("Invoice finalized successfully", {
+        description: `Invoice ${invoice.invoiceNumber} is now finalized and ready to send.`,
+      });
+      setActiveDialog(null);
     } catch (error) {
-      console.error("Failed to validate invoice:", error);
+      console.error("Failed to finalize invoice:", error);
+      toast.error("Failed to finalize invoice", {
+        description:
+          "Please try again or contact support if the problem persists.",
+      });
     } finally {
-      setIsValidating(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!invoice) return;
+    setIsProcessing(true);
+    try {
+      await cancelInvoice({ id: invoice._id });
+      toast.success("Invoice cancelled", {
+        description: `Invoice ${invoice.invoiceNumber} has been cancelled.`,
+      });
+      setActiveDialog(null);
+    } catch (error) {
+      console.error("Failed to cancel invoice:", error);
+      toast.error("Failed to cancel invoice", {
+        description:
+          "Please try again or contact support if the problem persists.",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePay = async () => {
+    if (!invoice) return;
+    setIsProcessing(true);
+    try {
+      await payInvoice({ id: invoice._id });
+      toast.success("Invoice marked as paid", {
+        description: `Invoice ${invoice.invoiceNumber} has been marked as paid.`,
+      });
+      setActiveDialog(null);
+    } catch (error) {
+      console.error("Failed to mark invoice as paid:", error);
+      toast.error("Failed to mark invoice as paid", {
+        description:
+          "Please try again or contact support if the problem persists.",
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleSendEmail = () => {
-    alert("Email sending functionality to be implemented with n8n integration");
+    toast.info("Coming soon", {
+      description:
+        "Email sending functionality will be implemented with n8n integration.",
+    });
   };
 
   const handleSeeDocument = () => {
-    if (!invoice || !client) return;
-    openInvoicePDFInNewTab({ invoice, client });
+    if (!invoice || !client) {
+      toast.error("Unable to generate document", {
+        description: "Invoice or client data is not available.",
+      });
+      return;
+    }
+    try {
+      openInvoicePDFInNewTab({ invoice, client });
+    } catch (error) {
+      console.error("Failed to open document:", error);
+      toast.error("Failed to open document", {
+        description:
+          "Please try again or contact support if the problem persists.",
+      });
+    }
   };
 
   const handleDownload = () => {
-    if (!invoice || !client) return;
-    downloadInvoicePDF({ invoice, client });
+    if (!invoice || !client) {
+      toast.error("Unable to download document", {
+        description: "Invoice or client data is not available.",
+      });
+      return;
+    }
+    try {
+      downloadInvoicePDF({ invoice, client });
+      toast.success("Download started", {
+        description: `Downloading invoice ${invoice.invoiceNumber}.`,
+      });
+    } catch (error) {
+      console.error("Failed to download document:", error);
+      toast.error("Failed to download document", {
+        description:
+          "Please try again or contact support if the problem persists.",
+      });
+    }
   };
 
   // Loading state
@@ -109,7 +192,20 @@ function RouteComponent() {
     );
   }
 
-  const canValidate = invoice.status === "draft";
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "draft":
+        return "default";
+      case "finalized":
+        return "secondary";
+      case "paid":
+        return "default";
+      case "cancelled":
+        return "destructive";
+      default:
+        return "default";
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto py-6">
@@ -125,32 +221,63 @@ function RouteComponent() {
               <h1 className="text-3xl font-bold tracking-tight">
                 {invoice.invoiceNumber}
               </h1>
-              <Badge variant="outline">{invoice.status.toUpperCase()}</Badge>
+              <Badge variant={getStatusColor(invoice.status)}>
+                {invoice.status.toUpperCase()}
+              </Badge>
             </div>
             <p className="text-muted-foreground">Invoice Details</p>
           </div>
         </div>
 
         <InvoiceActions
-          onValidate={() => setShowValidateDialog(true)}
+          status={invoice.status}
+          onFinalize={() => setActiveDialog("finalize")}
+          onCancel={() => setActiveDialog("cancel")}
+          onMarkAsPaid={() => setActiveDialog("pay")}
           onSendEmail={handleSendEmail}
           onSeeDocument={handleSeeDocument}
           onDownload={handleDownload}
-          isValidating={isValidating}
-          canValidate={canValidate}
+          isProcessing={isProcessing}
         />
       </div>
 
       {/* Invoice Details */}
       <InvoiceDetails invoice={invoice} client={client ?? undefined} />
 
-      {/* Validate Confirmation Dialog */}
-      <ValidateInvoiceDialog
-        open={showValidateDialog}
-        onOpenChange={setShowValidateDialog}
-        onConfirm={handleValidate}
-        invoiceNumber={invoice.invoiceNumber}
-        isValidating={isValidating}
+      {/* Finalize Confirmation Dialog */}
+      <ConfirmationDialog
+        open={activeDialog === "finalize"}
+        onOpenChange={(open) => setActiveDialog(open ? "finalize" : null)}
+        onConfirm={handleFinalize}
+        title="Finalize Invoice"
+        description={`Are you sure you want to finalize invoice ${invoice.invoiceNumber}? Once finalized, the invoice will be locked and ready to send to the client. You won't be able to edit the invoice details after finalization.`}
+        confirmText="Finalize Invoice"
+        variant="success"
+        isLoading={isProcessing}
+      />
+
+      {/* Cancel Confirmation Dialog */}
+      <ConfirmationDialog
+        open={activeDialog === "cancel"}
+        onOpenChange={(open) => setActiveDialog(open ? "cancel" : null)}
+        onConfirm={handleCancel}
+        title="Cancel Invoice"
+        description={`Are you sure you want to cancel invoice ${invoice.invoiceNumber}? This action will mark the invoice as cancelled. Cancelled invoices cannot be sent to clients or marked as paid.`}
+        confirmText="Cancel Invoice"
+        variant="destructive"
+        isLoading={isProcessing}
+      />
+
+      {/* Mark as Paid Confirmation Dialog */}
+      <ConfirmationDialog
+        open={activeDialog === "pay"}
+        onOpenChange={(open) => setActiveDialog(open ? "pay" : null)}
+        onConfirm={handlePay}
+        title="Mark Invoice as Paid"
+        description={`Are you sure you want to mark invoice ${invoice.invoiceNumber} as paid? This indicates that payment has been received from the client.`}
+        confirmText="Mark as Paid"
+        variant="success"
+        isLoading={isProcessing}
       />
     </div>
   );
