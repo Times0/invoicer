@@ -15,10 +15,6 @@
 			"!**/src/routeTree.gen.ts"
 		]
 	},
-	"formatter": {
-		"enabled": true,
-		"indentStyle": "tab"
-	},
 	"linter": {
 		"enabled": true,
 		"rules": {

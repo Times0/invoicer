@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+
+This project is called "Invoicer".
+This is a SaaS designed to help small businesses manage their invoices.
+
+The main focus it to make it fast efficient and integrable with n8n
