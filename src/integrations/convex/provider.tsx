@@ -1,5 +1,6 @@
 import { ConvexQueryClient } from "@convex-dev/react-query";
-import { ConvexProvider } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { useAuth } from "@clerk/clerk-react";
 
 // biome-ignore lint/suspicious/noExplicitAny: <demo>
 const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL;
@@ -14,8 +15,8 @@ export default function AppConvexProvider({
 	children: React.ReactNode;
 }) {
 	return (
-		<ConvexProvider client={convexQueryClient.convexClient}>
+		<ConvexProviderWithClerk client={convexQueryClient.convexClient} useAuth={useAuth}>
 			{children}
-		</ConvexProvider>
+		</ConvexProviderWithClerk>
 	);
 }

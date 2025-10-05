@@ -11,7 +11,6 @@ interface CompanyFormData {
   email: string;
   address: string;
   city: string;
-  state: string;
   zip: string;
   website: string;
 }
@@ -40,7 +39,6 @@ export function CompanyForm({
       email: "",
       address: "",
       city: "",
-      state: "",
       zip: "",
       website: "",
     },
@@ -234,34 +232,6 @@ export function CompanyForm({
                     onChange={(e) => field.handleChange(e.target.value)}
                     onBlur={field.handleBlur}
                     placeholder="Paris"
-                    aria-invalid={field.state.meta.errors.length > 0}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm text-destructive">
-                      {field.state.meta.errors[0]}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-
-            <form.Field
-              name="state"
-              validators={{
-                onChange: ({ value }) =>
-                  !value ? "State is required" : undefined,
-              }}
-            >
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>State/Region *</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    placeholder="Île-de-France"
                     aria-invalid={field.state.meta.errors.length > 0}
                   />
                   {field.state.meta.errors.length > 0 && (

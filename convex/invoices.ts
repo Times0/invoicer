@@ -24,7 +24,12 @@ export const add = mutation({
     total: v.number(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
     return await ctx.db.insert("invoices", {
+      userId: identity?.subject,
       invoiceNumber: args.invoiceNumber,
       clientId: args.clientId,
       status: "draft",
@@ -45,6 +50,17 @@ export const edit = mutation({
     total: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    const invoice = await ctx.db.get(args.id);
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+    if (invoice.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
     const { id, ...fields } = args;
     // Filter out undefined fields
     const updateFields: Record<string, any> = {};

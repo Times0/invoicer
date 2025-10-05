@@ -1,4 +1,3 @@
-import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   createRootRouteWithContext,
@@ -6,13 +5,13 @@ import {
   Scripts,
   Outlet,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import ConvexProvider from "../integrations/convex/provider";
-import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import appCss from "../styles.css?url";
 import Tabs from "@/components/tabs";
 import Header from "@/components/Header";
 import { Toaster } from "@/components/ui/toaster";
+import AppClerkProvider from "../integrations/clerk/provider";
+import { SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
 
 interface MyRouterContext {
   queryClient: QueryClient;
@@ -51,22 +50,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <ConvexProvider>
-          {children}
-          <Toaster />
-          <TanStackDevtools
-            config={{
-              position: "bottom-right",
-            }}
-            plugins={[
-              {
-                name: "Tanstack Router",
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-              TanStackQueryDevtools,
-            ]}
-          />
-        </ConvexProvider>
+        <AppClerkProvider>
+          <ConvexProvider>
+            {children}
+            <Toaster />
+          </ConvexProvider>
+        </AppClerkProvider>
         <Scripts />
       </body>
     </html>
@@ -83,10 +72,17 @@ function RootLayout() {
   return (
     <div>
       <Header />
-      <div className="p-4 ">
-        <Tabs tabs={tabs} />
-      </div>
-      <Outlet />
+      <SignedIn>
+        <div className="p-4 ">
+          <Tabs tabs={tabs} />
+        </div>
+        <Outlet />
+      </SignedIn>
+      <SignedOut>
+        <div className="p-4 ">
+          <SignInButton />
+        </div>
+      </SignedOut>
     </div>
   );
 }

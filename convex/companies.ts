@@ -22,18 +22,21 @@ export const add = mutation({
     email: v.string(),
     address: v.string(),
     city: v.string(),
-    state: v.string(),
     zip: v.string(),
     website: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
     return await ctx.db.insert("companies", {
+      userId: identity?.subject,
       name: args.name,
       siret: args.siret,
       email: args.email,
       address: args.address,
       city: args.city,
-      state: args.state,
       zip: args.zip,
       website: args.website,
     });
@@ -49,11 +52,21 @@ export const edit = mutation({
     email: v.optional(v.string()),
     address: v.optional(v.string()),
     city: v.optional(v.string()),
-    state: v.optional(v.string()),
     zip: v.optional(v.string()),
     website: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    const company = await ctx.db.get(args.id);
+    if (!company) {
+      throw new Error("Company not found");
+    }
+    if (company.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
     const { id, ...fields } = args;
     const updateFields: Record<string, string | undefined> = {};
     for (const key in fields) {
@@ -69,6 +82,17 @@ export const edit = mutation({
 export const remove = mutation({
   args: { id: v.id("companies") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    const company = await ctx.db.get(args.id);
+    if (!company) {
+      throw new Error("Company not found");
+    }
+    if (company.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
     await ctx.db.delete(args.id);
   },
 });

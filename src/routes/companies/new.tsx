@@ -21,7 +21,6 @@ function NewCompany() {
     email: string;
     address: string;
     city: string;
-    state: string;
     zip: string;
     website: string;
   }) => {

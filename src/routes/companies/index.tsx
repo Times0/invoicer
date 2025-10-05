@@ -38,7 +38,7 @@ function CompanyCard({ company }: { company: Doc<"companies"> }) {
         <div className="space-y-1 text-sm">
           <p className="text-muted-foreground">{company.address}</p>
           <p className="text-muted-foreground">
-            {company.city}, {company.state} {company.zip}
+            {company.city} {company.zip}
           </p>
           {company.website && (
             <p className="text-primary hover:underline">{company.website}</p>

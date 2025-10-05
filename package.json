@@ -19,6 +19,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.1",
     "@ai-sdk/react": "^2.0.8",
+    "@clerk/clerk-react": "^5.50.0",
     "@convex-dev/react-query": "0.0.0-alpha.11",
     "@modelcontextprotocol/sdk": "^1.8.0",
     "@radix-ui/react-dialog": "^1.1.15",

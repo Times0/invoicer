@@ -28,7 +28,6 @@ function EditCompany() {
     email: string;
     address: string;
     city: string;
-    state: string;
     zip: string;
     website: string;
   }) => {
@@ -141,7 +140,6 @@ function EditCompany() {
             email: company.email,
             address: company.address,
             city: company.city,
-            state: company.state,
             zip: company.zip,
             website: company.website,
           }}

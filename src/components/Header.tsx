@@ -1,4 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import {
+  SignedOut,
+  SignedIn,
+  UserButton,
+  SignInButton,
+} from "@clerk/clerk-react";
 
 export default function Header() {
   return (
@@ -15,7 +21,14 @@ export default function Header() {
             Invoicer
           </Link>
         </div>
-        <nav className="flex items-center space-x-6"></nav>
+        <nav className="flex items-center space-x-6">
+          <SignedOut>
+            <SignInButton />
+          </SignedOut>
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
+        </nav>
       </div>
     </header>
   );
