@@ -18,6 +18,7 @@ export default defineSchema({
     city: v.string(),
     zip: v.string(),
     website: v.string(),
+    isMyCompany: v.optional(v.boolean()),
   }),
 
   invoices: defineTable({

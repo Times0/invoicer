@@ -23,6 +23,7 @@ function NewCompany() {
     city: string;
     zip: string;
     website: string;
+    isMyCompany?: boolean;
   }) => {
     try {
       setIsSubmitting(true);

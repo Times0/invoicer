@@ -30,6 +30,7 @@ function EditCompany() {
     city: string;
     zip: string;
     website: string;
+    isMyCompany?: boolean;
   }) => {
     try {
       setIsSubmitting(true);
@@ -142,6 +143,7 @@ function EditCompany() {
             city: company.city,
             zip: company.zip,
             website: company.website,
+            isMyCompany: company.isMyCompany,
           }}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}

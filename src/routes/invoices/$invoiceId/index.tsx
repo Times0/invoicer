@@ -5,13 +5,11 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { InvoiceActions } from "@/components/InvoiceActions";
 import { InvoiceDetails } from "@/components/InvoiceDetails";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import { PDFPreviewDialog } from "@/components/PDFPreviewDialog";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
-import {
-  downloadInvoicePDF,
-  openInvoicePDFInNewTab,
-} from "@/lib/pdf-generator";
+import { useState, useEffect } from "react";
+import { downloadInvoicePDF, generateInvoicePDFUrl } from "@/lib/pdf-generator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -25,6 +23,8 @@ function RouteComponent() {
   const { invoiceId } = Route.useParams();
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const invoice = useQuery(api.invoices.get, {
     id: invoiceId as Id<"invoices">,
@@ -35,9 +35,19 @@ function RouteComponent() {
     invoice ? { id: invoice.clientId } : "skip"
   );
 
+  const myCompany = useQuery(api.companies.getMyCompany);
+
   const finalizeInvoice = useMutation(api.invoices.finalize);
   const cancelInvoice = useMutation(api.invoices.cancel);
   const payInvoice = useMutation(api.invoices.pay);
+
+  // Cleanup PDF URL when dialog closes
+  useEffect(() => {
+    if (!previewDialogOpen && pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+  }, [previewDialogOpen, pdfUrl]);
 
   const handleFinalize = async () => {
     if (!invoice) return;
@@ -117,7 +127,13 @@ function RouteComponent() {
       return;
     }
     try {
-      openInvoicePDFInNewTab({ invoice, client });
+      const url = generateInvoicePDFUrl({
+        invoice,
+        client,
+        myCompany: myCompany ?? undefined,
+      });
+      setPdfUrl(url);
+      setPreviewDialogOpen(true);
     } catch (error) {
       console.error("Failed to open document:", error);
       toast.error("Failed to open document", {
@@ -135,9 +151,10 @@ function RouteComponent() {
       return;
     }
     try {
-      downloadInvoicePDF({ invoice, client });
-      toast.success("Download started", {
-        description: `Downloading invoice ${invoice.invoiceNumber}.`,
+      downloadInvoicePDF({
+        invoice,
+        client,
+        myCompany: myCompany ?? undefined,
       });
     } catch (error) {
       console.error("Failed to download document:", error);
@@ -278,6 +295,14 @@ function RouteComponent() {
         confirmText="Mark as Paid"
         variant="success"
         isLoading={isProcessing}
+      />
+
+      {/* PDF Preview Dialog */}
+      <PDFPreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={setPreviewDialogOpen}
+        pdfUrl={pdfUrl}
+        title={`Invoice ${invoice.invoiceNumber}`}
       />
     </div>
   );

@@ -76,7 +76,6 @@ export function InvoiceActions({
 
       <Button onClick={onDownload} size="lg" variant="outline">
         <Download />
-        Download
       </Button>
 
       {/* Destructive Action */}

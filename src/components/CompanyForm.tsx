@@ -13,6 +13,7 @@ interface CompanyFormData {
   city: string;
   zip: string;
   website: string;
+  isMyCompany?: boolean;
 }
 
 interface CompanyFormProps {
@@ -41,6 +42,7 @@ export function CompanyForm({
       city: "",
       zip: "",
       website: "",
+      isMyCompany: false,
     },
     onSubmit: async ({ value }) => {
       await onSubmit(value);
@@ -175,6 +177,24 @@ export function CompanyForm({
                     {field.state.meta.errors[0]}
                   </p>
                 )}
+              </div>
+            )}
+          </form.Field>
+
+          <form.Field name="isMyCompany">
+            {(field) => (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id={field.name}
+                  name={field.name}
+                  checked={field.state.value || false}
+                  onChange={(e) => field.handleChange(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor={field.name} className="font-normal cursor-pointer">
+                  Mark as my company (will appear as invoice issuer)
+                </Label>
               </div>
             )}
           </form.Field>
