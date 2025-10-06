@@ -24,8 +24,8 @@ export default defineSchema({
 
   invoices: defineTable({
     userId: v.string(),
+    companyId: v.id("companies"),
     invoiceNumber: v.string(),
-    clientId: v.id("companies"),
     status: statusValidator,
     currency: v.string(),
     total: v.number(),
@@ -34,7 +34,8 @@ export default defineSchema({
     cancelledAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_invoiceNumber", ["userId", "invoiceNumber"]),
+    .index("by_invoiceNumber", ["invoiceNumber"])
+    .index("by_user_company", ["userId", "companyId"]),
 
   apiKeys: defineTable({
     userId: v.string(),

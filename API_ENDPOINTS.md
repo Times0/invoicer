@@ -140,12 +140,12 @@ HTTP 400: "No previous invoice found for this client"
 
 ### 4. Change Invoice Status
 
-**PATCH** `/api/invoices/:id/status`
+**PATCH** `/api/invoices/status`
 
 Update the status of an invoice. This endpoint automatically sets the appropriate timestamp based on the new status.
 
-**URL Parameters:**
-- `id`: The invoice ID
+**Query Parameters:**
+- `id` (string, required): The invoice ID
 
 **Request Body:**
 ```json
@@ -172,9 +172,62 @@ Update the status of an invoice. This endpoint automatically sets the appropriat
 
 ---
 
+### 5. Generate Invoice PDF
+
+**GET** `/api/invoices/pdf`
+
+Generate and download a PDF file for a specific invoice.
+
+**Query Parameters:**
+- `id` (string, required): The invoice ID
+
+**Response:**
+- **Content-Type:** `application/pdf`
+- **Content-Disposition:** `attachment; filename="invoice-{invoiceNumber}.pdf"`
+
+The endpoint returns a PDF file as a binary stream. The PDF includes:
+- Invoice details (number, date, status, currency)
+- Sender information ("my company" marked in the system)
+- Client/recipient information
+- Invoice total
+
+**Example Usage:**
+
+```bash
+curl -X GET \
+  "https://your-convex-deployment.convex.cloud/api/invoices/pdf?id=invoice_123" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  --output invoice.pdf
+```
+
+**n8n Integration:**
+
+In n8n, use the HTTP Request node with:
+- **Method:** GET
+- **URL:** `https://your-convex-deployment.convex.cloud/api/invoices/pdf?id={{$json["invoiceId"]}}`
+- **Authentication:** Generic Credential Type → Header Auth
+  - **Header Name:** Authorization
+  - **Header Value:** Bearer YOUR_API_KEY
+- **Response Format:** File
+
+This allows you to:
+- Download invoices programmatically
+- Email invoices as attachments
+- Store invoices in cloud storage (Dropbox, Google Drive, etc.)
+- Archive invoices automatically
+
+**Error Responses:**
+- `400 Bad Request`: Missing invoice ID
+- `401 Unauthorized`: Missing or invalid API key
+- `403 Forbidden`: Invoice doesn't belong to authenticated user
+- `404 Not Found`: Invoice or client not found
+- `500 Internal Server Error`: PDF generation failed
+
+---
+
 ## Client/Company Endpoints
 
-### 5. Create Client
+### 6. Create Client
 
 **POST** `/api/clients`
 
@@ -215,7 +268,7 @@ Create a new client company.
 
 ---
 
-### 6. List Clients
+### 7. List Clients
 
 **GET** `/api/clients`
 
@@ -245,22 +298,22 @@ Retrieve all client companies.
 
 ## n8n Integration Workflow Examples
 
-### Example 1: Automated Monthly Invoice
+### Example 1: Automated Monthly Invoice with PDF
 
 1. **Trigger**: Schedule (e.g., 1st of every month)
 2. **Get Client**: `GET /api/clients` to list all clients
 3. **For Each Client**:
    - **Duplicate Invoice**: `POST /api/invoices/duplicate` with the client ID
-   - **Send for Verification**: Email yourself the invoice details
-   - **Wait for Approval**: Use n8n webhook or manual trigger
-   - **Finalize**: `PATCH /api/invoices/{id}/status` with `status: "finalized"`
+   - **Finalize**: `PATCH /api/invoices/status?id={invoiceId}` with `status: "finalized"`
+   - **Generate PDF**: `GET /api/invoices/pdf?id={invoiceId}` to download the PDF
+   - **Send to Client**: Email the PDF as an attachment to the client
 
 ### Example 2: Process Payment Confirmation
 
 1. **Trigger**: Email received with payment confirmation
 2. **Extract Invoice Number**: Parse email for invoice number
 3. **Get Invoice**: `GET /api/invoices` (filter could be added client-side)
-4. **Update Status**: `PATCH /api/invoices/{id}/status` with `status: "paid"`
+4. **Update Status**: `PATCH /api/invoices/status?id={invoiceId}` with `status: "paid"`
 
 ### Example 3: Create Invoice from CRM
 

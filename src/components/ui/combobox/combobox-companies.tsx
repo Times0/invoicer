@@ -34,10 +34,8 @@ export function CompanyCombobox({
   options,
   value,
   onValueChange,
-  placeholder = "Select company...",
   searchPlaceholder = "Search companies...",
   emptyText = "No companies found.",
-  className,
   buttonClassName,
   contentClassName,
 }: CompanyComboboxProps) {

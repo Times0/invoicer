@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { InvoiceActions } from "@/components/InvoiceActions";
@@ -9,7 +9,6 @@ import { PDFPreviewDialog } from "@/components/PDFPreviewDialog";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
-import { downloadInvoicePDF, generateInvoicePDFUrl } from "@/lib/pdf-generator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -30,16 +29,15 @@ function RouteComponent() {
     id: invoiceId as Id<"invoices">,
   });
 
-  const client = useQuery(
+  const company = useQuery(
     api.companies.get,
-    invoice ? { id: invoice.clientId } : "skip"
+    invoice ? { id: invoice.companyId } : "skip"
   );
-
-  const myCompany = useQuery(api.companies.getMyCompany);
 
   const finalizeInvoice = useMutation(api.invoices.finalize);
   const cancelInvoice = useMutation(api.invoices.cancel);
   const payInvoice = useMutation(api.invoices.pay);
+  const generatePDF = useAction(api.invoices.generatePDF);
 
   // Cleanup PDF URL when dialog closes
   useEffect(() => {
@@ -119,19 +117,17 @@ function RouteComponent() {
     });
   };
 
-  const handleSeeDocument = () => {
-    if (!invoice || !client) {
+  const handleSeeDocument = async () => {
+    if (!invoice) {
       toast.error("Unable to generate document", {
-        description: "Invoice or client data is not available.",
+        description: "Invoice data is not available.",
       });
       return;
     }
     try {
-      const url = generateInvoicePDFUrl({
-        invoice,
-        client,
-        myCompany: myCompany ?? undefined,
-      });
+      const pdfBuffer = await generatePDF({ invoiceId: invoice._id });
+      const blob = new Blob([pdfBuffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
       setPdfUrl(url);
       setPreviewDialogOpen(true);
     } catch (error) {
@@ -143,18 +139,26 @@ function RouteComponent() {
     }
   };
 
-  const handleDownload = () => {
-    if (!invoice || !client) {
+  const handleDownload = async () => {
+    if (!invoice) {
       toast.error("Unable to download document", {
-        description: "Invoice or client data is not available.",
+        description: "Invoice data is not available.",
       });
       return;
     }
     try {
-      downloadInvoicePDF({
-        invoice,
-        client,
-        myCompany: myCompany ?? undefined,
+      const pdfBuffer = await generatePDF({ invoiceId: invoice._id });
+
+      const blob = new Blob([pdfBuffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoice-${invoice.invoiceNumber}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded", {
+        description: `Invoice ${invoice.invoiceNumber} has been downloaded.`,
       });
     } catch (error) {
       console.error("Failed to download document:", error);
@@ -166,7 +170,7 @@ function RouteComponent() {
   };
 
   // Loading state
-  if (invoice === undefined || (invoice && client === undefined)) {
+  if (invoice === undefined || (invoice && company === undefined)) {
     return (
       <div className="max-w-7xl mx-auto py-6">
         <div className="flex items-center gap-4 mb-6">
@@ -259,7 +263,7 @@ function RouteComponent() {
       </div>
 
       {/* Invoice Details */}
-      <InvoiceDetails invoice={invoice} client={client ?? undefined} />
+      <InvoiceDetails invoice={invoice} company={company ?? undefined} />
 
       {/* Finalize Confirmation Dialog */}
       <ConfirmationDialog

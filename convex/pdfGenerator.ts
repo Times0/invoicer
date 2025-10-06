@@ -1,6 +1,4 @@
 import { jsPDF } from "jspdf";
-import type { Doc } from "../../convex/_generated/dataModel";
-import { format } from "date-fns";
 
 // ============================================================================
 // THEME CONFIGURATION - Customize your invoice colors here
@@ -26,17 +24,54 @@ const THEME = {
   borderDark: { r: 100, g: 100, b: 100 }, // Dark gray
 } as const;
 
+interface Invoice {
+  _creationTime: number;
+  invoiceNumber: string;
+  status: "draft" | "finalized" | "paid" | "cancelled";
+  currency: string;
+  total: number;
+}
+
+interface Company {
+  name: string;
+  siret?: string;
+  email: string;
+  address: string;
+  city: string;
+  zip: string;
+  website?: string;
+}
+
 interface GenerateInvoicePDFOptions {
-  invoice: Doc<"invoices">;
-  client: Doc<"companies">;
-  myCompany?: Doc<"companies">;
+  invoice: Invoice;
+  clientCompany: Company;
+  myCompany?: Company;
+}
+
+function formatDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 }
 
 export function generateInvoicePDF({
   invoice,
-  client,
+  clientCompany,
   myCompany,
-}: GenerateInvoicePDFOptions): jsPDF {
+}: GenerateInvoicePDFOptions): ArrayBuffer {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -66,7 +101,7 @@ export function generateInvoicePDF({
   });
 
   yPos += 3;
-  
+
   // Simple line under header
   doc.setDrawColor(THEME.borderDark.r, THEME.borderDark.g, THEME.borderDark.b);
   doc.setLineWidth(0.5);
@@ -80,11 +115,11 @@ export function generateInvoicePDF({
   doc.setFontSize(smallSize);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(THEME.textSecondary.r, THEME.textSecondary.g, THEME.textSecondary.b);
-  
+
   // Date
-  const dateText = format(new Date(invoice._creationTime), "MMMM dd, yyyy");
+  const dateText = formatDate(invoice._creationTime);
   doc.text(`Date: ${dateText}`, margin, yPos);
-  
+
   // Currency
   doc.text(`Currency: ${invoice.currency}`, margin + 70, yPos);
 
@@ -152,27 +187,27 @@ export function generateInvoicePDF({
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(normalSize);
-  doc.text(client.name, rightColX, yPos);
+  doc.text(clientCompany.name, rightColX, yPos);
   yPos += 5;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(smallSize);
   doc.setTextColor(THEME.textSecondary.r, THEME.textSecondary.g, THEME.textSecondary.b);
 
-  if (client.siret) {
-    doc.text(`SIRET: ${client.siret}`, rightColX, yPos);
+  if (clientCompany.siret) {
+    doc.text(`SIRET: ${clientCompany.siret}`, rightColX, yPos);
     yPos += 4;
   }
 
-  doc.text(client.address, rightColX, yPos);
+  doc.text(clientCompany.address, rightColX, yPos);
   yPos += 4;
-  doc.text(`${client.city}, ${client.zip}`, rightColX, yPos);
+  doc.text(`${clientCompany.city}, ${clientCompany.zip}`, rightColX, yPos);
   yPos += 4;
-  doc.text(client.email, rightColX, yPos);
+  doc.text(clientCompany.email, rightColX, yPos);
   yPos += 4;
 
-  if (client.website) {
-    doc.text(client.website, rightColX, yPos);
+  if (clientCompany.website) {
+    doc.text(clientCompany.website, rightColX, yPos);
     yPos += 4;
   }
 
@@ -182,7 +217,7 @@ export function generateInvoicePDF({
   // ============================================================================
   // SECTION 4: Line Items Table - Clean and minimal
   // ============================================================================
-  
+
   // Table header line
   doc.setDrawColor(THEME.borderDark.r, THEME.borderDark.g, THEME.borderDark.b);
   doc.setLineWidth(0.5);
@@ -196,7 +231,7 @@ export function generateInvoicePDF({
   doc.text("Amount", pageWidth - margin, yPos, { align: "right" });
 
   yPos += 7;
-  
+
   // Line under header
   doc.setDrawColor(THEME.borderLight.r, THEME.borderLight.g, THEME.borderLight.b);
   doc.setLineWidth(0.3);
@@ -222,7 +257,7 @@ export function generateInvoicePDF({
   // ============================================================================
   // SECTION 5: Total Section - Bold and clean
   // ============================================================================
-  
+
   // Strong line above total
   doc.setDrawColor(THEME.borderDark.r, THEME.borderDark.g, THEME.borderDark.b);
   doc.setLineWidth(0.8);
@@ -234,9 +269,9 @@ export function generateInvoicePDF({
   doc.setTextColor(THEME.textPrimary.r, THEME.textPrimary.g, THEME.textPrimary.b);
   doc.text("TOTAL", margin, yPos);
   doc.text(totalFormatted, pageWidth - margin, yPos, { align: "right" });
-  
+
   yPos += 3;
-  
+
   // Double line under total
   doc.setLineWidth(0.8);
   doc.line(margin, yPos, pageWidth - margin, yPos);
@@ -247,11 +282,11 @@ export function generateInvoicePDF({
   // SECTION 6: Footer - Simple and understated
   // ============================================================================
   const footerY = pageHeight - 25;
-  
+
   doc.setDrawColor(THEME.borderLight.r, THEME.borderLight.g, THEME.borderLight.b);
   doc.setLineWidth(0.3);
   doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-  
+
   doc.setFontSize(smallSize);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(THEME.textMuted.r, THEME.textMuted.g, THEME.textMuted.b);
@@ -259,25 +294,6 @@ export function generateInvoicePDF({
     align: "center",
   });
 
-  return doc;
+  return doc.output("arraybuffer");
 }
 
-export function downloadInvoicePDF(options: GenerateInvoicePDFOptions) {
-  const doc = generateInvoicePDF(options);
-  doc.save(`invoice-${options.invoice.invoiceNumber}.pdf`);
-}
-
-export function generateInvoicePDFUrl(
-  options: GenerateInvoicePDFOptions
-): string {
-  const doc = generateInvoicePDF(options);
-  const pdfBlob = doc.output("blob");
-  return URL.createObjectURL(pdfBlob);
-}
-
-export function openInvoicePDFInNewTab(
-  options: GenerateInvoicePDFOptions
-): void {
-  const url = generateInvoicePDFUrl(options);
-  window.open(url, "_blank");
-}

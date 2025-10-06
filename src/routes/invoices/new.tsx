@@ -11,8 +11,6 @@ export const Route = createFileRoute("/invoices/new")({
   component: NewInvoice,
 });
 
-
-
 function NewInvoice() {
   const navigate = useNavigate();
   const addInvoice = useMutation(api.invoices.add);
@@ -21,7 +19,7 @@ function NewInvoice() {
 
   const handleSubmit = async (data: {
     invoiceNumber: string;
-    clientId: Id<"companies">;
+    companyId: Id<"companies">;
     status: string;
     currency: string;
     total: number;
@@ -30,7 +28,7 @@ function NewInvoice() {
       setIsSubmitting(true);
       await addInvoice({
         invoiceNumber: data.invoiceNumber,
-        clientId: data.clientId as Id<"companies">,
+        companyId: data.companyId,
         status: data.status,
         currency: data.currency,
         total: data.total,

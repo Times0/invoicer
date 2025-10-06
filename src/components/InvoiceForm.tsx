@@ -16,7 +16,7 @@ import { CompanyCombobox } from "./ui/combobox/combobox-companies";
 
 interface InvoiceFormData {
   invoiceNumber: string;
-  clientId: string;
+  companyId: string;
   currency: string;
   total: number;
 }
@@ -43,22 +43,24 @@ export function InvoiceForm({
   const form = useForm({
     defaultValues: {
       invoiceNumber: initialData?.invoiceNumber ?? "",
-      clientId: initialData?.clientId ?? "",
+      companyId: initialData?.companyId ?? "",
       currency: initialData?.currency ?? "EUR",
       total: initialData?.total ?? 0,
     },
     onSubmit: async ({ value }) => {
-      if (!value.clientId) {
-        throw new Error("Client is required");
+      if (!value.companyId) {
+        throw new Error("Company is required");
       }
       await onSubmit({
         invoiceNumber: value.invoiceNumber,
-        clientId: value.clientId,
+        companyId: value.companyId,
         currency: value.currency,
         total: value.total,
       });
     },
   });
+
+  console.log(form.state.values);
 
   return (
     <form
@@ -104,27 +106,26 @@ export function InvoiceForm({
             </form.Field>
 
             <form.Field
-              name="clientId"
+              name="companyId"
               validators={{
                 onChange: ({ value }) =>
-                  !value ? "Client is required" : undefined,
+                  !value ? "Company is required" : undefined,
               }}
             >
               {(field) => {
-                // Find the selected company object for the combobox
-                const selectedCompany =
-                  companies.find((c) => c._id === field.state.value) ||
-                  ({} as Doc<"companies">);
+                const selectedCompany = companies.find(
+                  (c) => c._id === field.state.value
+                );
+
                 return (
                   <div className="space-y-2">
-                    <Label htmlFor={field.name}>Client *</Label>
+                    <Label htmlFor={field.name}>Company *</Label>
                     <CompanyCombobox
                       options={companies}
-                      value={selectedCompany}
+                      value={selectedCompany ?? ({} as Doc<"companies">)}
                       onValueChange={(val: Doc<"companies">) =>
                         field.handleChange(val._id)
                       }
-                      placeholder="Select a client..."
                       buttonClassName="w-full"
                       contentClassName="w-full"
                       aria-invalid={field.state.meta.errors.length > 0}

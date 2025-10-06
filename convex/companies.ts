@@ -205,11 +205,14 @@ export const createCompany = mutation({
 
 // List companies (for n8n integration - accepts userId directly)
 export const listCompanies = query({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
-    return await ctx.db
+  args: { userId: v.string(), companyId: v.optional(v.id("companies")) },
+  handler: async (ctx, { userId, companyId }) => {
+    let q = ctx.db
       .query("companies")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+      .withIndex("by_user", (q) => q.eq("userId", userId));
+    if (companyId) {
+      q = q.filter((q) => q.eq(q.field("_id"), companyId));
+    }
+    return await q.collect();
   },
 });

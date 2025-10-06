@@ -7,12 +7,10 @@ export const verifyApiKey = query({
   args: { apiKey: v.string() },
   handler: async (ctx, { apiKey }) => {
     const keyHash = await sha256(apiKey);
-    console.log("keyHash", keyHash);
     const rec = await ctx.db
       .query("apiKeys")
       .withIndex("by_keyHash", (q) => q.eq("keyHash", keyHash))
       .first();
-    console.log("rec", rec);
     if (!rec || rec.revoked) return null;
     return rec.userId as string;
   },

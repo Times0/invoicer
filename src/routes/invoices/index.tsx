@@ -30,17 +30,18 @@ export const Route = createFileRoute("/invoices/")({
 function Invoices() {
   const invoices = useQuery(api.invoices.list);
   const companies = useQuery(api.companies.list);
+  console.log(companies);
   const deleteInvoice = useMutation(api.invoices.remove);
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [clientFilter, setClientFilter] = useState<string>("all");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
-  const getClient = (clientId: string) => {
-    return companies?.find((c) => c._id === clientId);
+  const getCompany = (companyId: string) => {
+    return companies?.find((c) => c._id === companyId);
   };
 
   const handleEdit = (invoiceId: string) => {
@@ -69,7 +70,7 @@ function Invoices() {
     if (!invoices || !companies) return [];
 
     return invoices.filter((invoice) => {
-      const client = getClient(invoice.clientId);
+      const company = getCompany(invoice.companyId);
 
       // Search filter
       const matchesSearch =
@@ -77,20 +78,20 @@ function Invoices() {
         invoice.invoiceNumber
           .toLowerCase()
           .includes(searchQuery.toLowerCase()) ||
-        client?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client?.email.toLowerCase().includes(searchQuery.toLowerCase());
+        company?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        company?.email.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Status filter
       const matchesStatus =
         statusFilter === "all" || invoice.status === statusFilter;
 
       // Client filter
-      const matchesClient =
-        clientFilter === "all" || invoice.clientId === clientFilter;
+      const matchesCompany =
+        companyFilter === "all" || invoice.companyId === companyFilter;
 
-      return matchesSearch && matchesStatus && matchesClient;
+      return matchesSearch && matchesStatus && matchesCompany;
     });
-  }, [invoices, companies, searchQuery, statusFilter, clientFilter]);
+  }, [invoices, companies, searchQuery, statusFilter, companyFilter]);
 
   return (
     <div className="max-w-7xl mx-auto py-6">
@@ -141,7 +142,7 @@ function Invoices() {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={clientFilter} onValueChange={setClientFilter}>
+            <Select value={companyFilter} onValueChange={setCompanyFilter}>
               <SelectTrigger className="w-full sm:w-[200px] bg-background">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Client" />
@@ -196,7 +197,7 @@ function Invoices() {
               onClick={() => {
                 setSearchQuery("");
                 setStatusFilter("all");
-                setClientFilter("all");
+                setCompanyFilter("all");
               }}
             >
               Clear Filters
@@ -206,13 +207,13 @@ function Invoices() {
           /* Invoice List */
           <div className="space-y-3">
             {filteredInvoices.map((invoice) => {
-              const client = getClient(invoice.clientId);
+              const company = getCompany(invoice.companyId);
 
               return (
                 <InvoiceRow
                   key={invoice._id}
                   invoice={invoice}
-                  client={client}
+                  company={company}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                 />

@@ -18,6 +18,7 @@ import type * as companies from "../companies.js";
 import type * as http from "../http.js";
 import type * as invoices from "../invoices.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as pdfGenerator from "../pdfGenerator.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   invoices: typeof invoices;
   "lib/crypto": typeof lib_crypto;
+  pdfGenerator: typeof pdfGenerator;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

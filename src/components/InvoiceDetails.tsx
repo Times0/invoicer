@@ -20,10 +20,10 @@ import { cn } from "@/lib/utils";
 
 interface InvoiceDetailsProps {
   invoice: Doc<"invoices">;
-  client?: Doc<"companies">;
+  company?: Doc<"companies">;
 }
 
-export function InvoiceDetails({ invoice, client }: InvoiceDetailsProps) {
+export function InvoiceDetails({ invoice, company }: InvoiceDetailsProps) {
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -31,7 +31,7 @@ export function InvoiceDetails({ invoice, client }: InvoiceDetailsProps) {
     }).format(amount);
   };
 
-  const faviconUrl = client?.website ? getFaviconUrl(client.website) : null;
+  const faviconUrl = company?.website ? getFaviconUrl(company.website) : null;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -146,7 +146,7 @@ export function InvoiceDetails({ invoice, client }: InvoiceDetailsProps) {
       </Card>
 
       {/* Client Information Card */}
-      {client && (
+      {company && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-start gap-4 mb-6">
@@ -154,7 +154,7 @@ export function InvoiceDetails({ invoice, client }: InvoiceDetailsProps) {
                 <div className="flex-shrink-0">
                   <img
                     src={faviconUrl}
-                    alt={client.name}
+                    alt={company.name}
                     className="w-16 h-16 rounded-lg border-2 border-border object-cover shadow-sm"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -176,10 +176,10 @@ export function InvoiceDetails({ invoice, client }: InvoiceDetailsProps) {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-bold mb-1">{client.name}</h3>
-                {client.siret && (
+                <h3 className="text-xl font-bold mb-1">{company.name}</h3>
+                {company.siret && (
                   <p className="text-sm text-muted-foreground">
-                    SIRET: {client.siret}
+                    SIRET: {company.siret}
                   </p>
                 )}
               </div>
@@ -190,33 +190,39 @@ export function InvoiceDetails({ invoice, client }: InvoiceDetailsProps) {
                 <Mail className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground mb-0.5">Email</p>
-                  <p className="text-sm font-medium truncate">{client.email}</p>
+                  <p className="text-sm font-medium truncate">
+                    {company.email}
+                  </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground mb-0.5">Address</p>
-                  <p className="text-sm font-medium">{client.address}</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">
+                    Address
+                  </p>
+                  <p className="text-sm font-medium">{company.address}</p>
                   <p className="text-sm text-muted-foreground">
-                    {client.city} {client.zip}
+                    {company.city} {company.zip}
                   </p>
                 </div>
               </div>
 
-              {client.website && (
+              {company.website && (
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 md:col-span-2">
                   <Globe className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-muted-foreground mb-0.5">Website</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">
+                      Website
+                    </p>
                     <a
-                      href={client.website}
+                      href={company.website}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm font-medium text-primary hover:underline truncate block"
                     >
-                      {client.website}
+                      {company.website}
                     </a>
                   </div>
                 </div>
@@ -228,4 +234,3 @@ export function InvoiceDetails({ invoice, client }: InvoiceDetailsProps) {
     </div>
   );
 }
-

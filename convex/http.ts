@@ -2,18 +2,17 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import { generateInvoicePDF } from "./pdfGenerator";
 
 const requireUser = async (ctx: any, req: Request) => {
   const auth = req.headers.get("authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
   if (!token) return null;
-  console.log("token", token);
 
   const userId = await ctx.runQuery(api.apiKeys.verifyApiKey, {
     apiKey: token,
   });
 
-  console.log("userId", userId);
   if (!userId) return null;
   return userId;
 };
@@ -29,16 +28,16 @@ const postInvoice = httpAction(async (ctx, req) => {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const { invoiceNumber, clientId, currency, total, status, timestamps } =
+  const { invoiceNumber, companyId, currency, total, status, timestamps } =
     body ?? {};
-  if (!invoiceNumber || !clientId || !currency || typeof total !== "number") {
+  if (!invoiceNumber || !companyId || !currency || typeof total !== "number") {
     return new Response("Missing required fields", { status: 400 });
   }
 
   const { invoiceId } = await ctx.runMutation(api.invoices.createInvoice, {
     userId,
     invoiceNumber,
-    clientId,
+    companyId,
     currency,
     total,
     status,
@@ -55,17 +54,17 @@ const getInvoices = httpAction(async (ctx, req) => {
   const url = new URL(req.url);
   const limitParam = url.searchParams.get("limit");
   const limit = limitParam ? Number(limitParam) : undefined;
-  const clientId = url.searchParams.get("clientId") || undefined;
+  const companyId = url.searchParams.get("companyId") || undefined;
 
   const invoices = await ctx.runQuery(api.invoices.listInvoices, {
     userId,
     limit,
-    clientId: clientId as any,
+    companyId: companyId as any,
   });
   return Response.json({ invoices });
 });
 
-// Duplicate last invoice for a client
+// Duplicate last invoice for a company
 const duplicateInvoice = httpAction(async (ctx, req) => {
   const userId = await requireUser(ctx, req);
   if (!userId) return new Response("Unauthorized", { status: 401 });
@@ -77,15 +76,15 @@ const duplicateInvoice = httpAction(async (ctx, req) => {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const { clientId, invoiceNumber } = body ?? {};
-  if (!clientId) {
-    return new Response("Missing clientId", { status: 400 });
+  const { companyId, invoiceNumber } = body ?? {};
+  if (!companyId) {
+    return new Response("Missing companyId", { status: 400 });
   }
 
   try {
     const result = await ctx.runMutation(api.invoices.duplicateLastInvoice, {
       userId,
-      clientId,
+      companyId,
       invoiceNumber,
     });
     return Response.json(result);
@@ -99,10 +98,9 @@ const changeInvoiceStatus = httpAction(async (ctx, req) => {
   const userId = await requireUser(ctx, req);
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
-  // Extract invoiceId from URL path
+  // Extract invoiceId from query params
   const url = new URL(req.url);
-  const pathParts = url.pathname.split("/");
-  const invoiceId = pathParts[pathParts.length - 2]; // .../invoices/:id/status
+  const invoiceId = url.searchParams.get("id");
 
   if (!invoiceId) {
     return new Response("Missing invoiceId", { status: 400 });
@@ -136,8 +134,8 @@ const changeInvoiceStatus = httpAction(async (ctx, req) => {
   }
 });
 
-// Create a client/company
-const postClient = httpAction(async (ctx, req) => {
+// Create a company
+const postCompany = httpAction(async (ctx, req) => {
   const userId = await requireUser(ctx, req);
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
@@ -169,15 +167,112 @@ const postClient = httpAction(async (ctx, req) => {
   return Response.json({ companyId });
 });
 
-// Get clients/companies
-const getClients = httpAction(async (ctx, req) => {
+// Get companies
+const getCompanies = httpAction(async (ctx, req) => {
   const userId = await requireUser(ctx, req);
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
+  const url = new URL(req.url);
+  const companyId = url.searchParams.get("companyId");
+
   const companies = await ctx.runQuery(api.companies.listCompanies, {
     userId,
+    companyId: companyId as any,
   });
   return Response.json({ companies });
+});
+
+const getInvoicePDF = httpAction(async (ctx, req) => {
+  const userId = await requireUser(ctx, req);
+  if (!userId) return new Response("Unauthorized", { status: 401 });
+
+  // Extract invoiceId from query params
+  const url = new URL(req.url);
+  const invoiceId = url.searchParams.get("id");
+
+  if (!invoiceId) {
+    return new Response("Missing invoiceId", { status: 400 });
+  }
+
+  try {
+    // Fetch the invoice
+    const invoice = await ctx.runQuery(api.invoices.get, {
+      id: invoiceId as any,
+    });
+
+    if (!invoice) {
+      return new Response("Invoice not found", { status: 404 });
+    }
+
+    // Verify the invoice belongs to the user
+    if (invoice.userId !== userId) {
+      return new Response("Unauthorized", { status: 403 });
+    }
+
+    // Fetch the company (the invoice recipient)
+    const company = await ctx.runQuery(api.companies.get, {
+      id: invoice.companyId,
+    });
+
+    if (!company) {
+      return new Response("Company not found", { status: 404 });
+    }
+
+    // Fetch "my company" (the invoice issuer)
+    const companies = await ctx.runQuery(api.companies.listCompanies, {
+      userId,
+    });
+
+    console.log(companies);
+    const myCompany = companies.find((c) => c.isMyCompany);
+
+    console.log(myCompany);
+
+    // Generate PDF
+    const pdfBuffer = generateInvoicePDF({
+      invoice: {
+        _creationTime: invoice._creationTime,
+        invoiceNumber: invoice.invoiceNumber,
+        status: invoice.status,
+        currency: invoice.currency,
+        total: invoice.total,
+      },
+      clientCompany: {
+        name: company.name,
+        siret: company.siret,
+        email: company.email,
+        address: company.address,
+        city: company.city,
+        zip: company.zip,
+        website: company.website,
+      },
+      myCompany: myCompany
+        ? {
+            name: myCompany.name,
+            siret: myCompany.siret,
+            email: myCompany.email,
+            address: myCompany.address,
+            city: myCompany.city,
+            zip: myCompany.zip,
+            website: myCompany.website,
+          }
+        : undefined,
+    });
+
+    // Return PDF as downloadable file
+    return new Response(pdfBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`,
+      },
+    });
+  } catch (error: any) {
+    console.error("PDF generation error:", error);
+    return new Response(error.message || "Error generating PDF", {
+      status: 500,
+    });
+  }
 });
 
 const router = httpRouter();
@@ -191,13 +286,18 @@ router.route({
   handler: duplicateInvoice,
 });
 router.route({
-  path: "/api/invoices/:id/status",
+  path: "/api/invoices/status",
   method: "PATCH",
   handler: changeInvoiceStatus,
 });
+router.route({
+  path: "/api/invoices/pdf",
+  method: "GET",
+  handler: getInvoicePDF,
+});
 
-// Client routes
-router.route({ path: "/api/clients", method: "POST", handler: postClient });
-router.route({ path: "/api/clients", method: "GET", handler: getClients });
+// Company routes
+router.route({ path: "/api/companies", method: "POST", handler: postCompany });
+router.route({ path: "/api/companies", method: "GET", handler: getCompanies });
 
 export default router;

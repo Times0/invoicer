@@ -1,6 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { v } from "convex/values";
 import { statusValidator } from "./schema";
+import { generateInvoicePDF } from "./pdfGenerator";
+import { api } from "./_generated/api";
 
 export const list = query({
   handler: async (ctx) => {
@@ -27,7 +29,7 @@ export const get = query({
 export const add = mutation({
   args: {
     invoiceNumber: v.string(),
-    clientId: v.id("companies"),
+    companyId: v.id("companies"),
     currency: v.string(),
     total: v.number(),
   },
@@ -37,9 +39,9 @@ export const add = mutation({
       throw new Error("Unauthorized");
     }
     return await ctx.db.insert("invoices", {
-      userId: identity?.subject,
+      userId: identity.subject,
+      companyId: args.companyId,
       invoiceNumber: args.invoiceNumber,
-      clientId: args.clientId,
       status: "draft",
       currency: args.currency,
       total: args.total,
@@ -52,7 +54,7 @@ export const edit = mutation({
   args: {
     id: v.id("invoices"),
     invoiceNumber: v.optional(v.string()),
-    clientId: v.optional(v.id("companies")),
+    companyId: v.optional(v.id("companies")),
     status: v.optional(statusValidator),
     currency: v.optional(v.string()),
     total: v.optional(v.number()),
@@ -132,7 +134,7 @@ export const remove = mutation({
 export const create = mutation({
   args: {
     userId: v.string(),
-    clientId: v.id("companies"),
+    companyId: v.id("companies"),
     currency: v.string(),
     total: v.number(),
     status: v.optional(statusValidator),
@@ -143,7 +145,7 @@ export const create = mutation({
     cancelledAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { userId, clientId, currency, total, finalize, ...rest } = args;
+    const { userId, companyId, currency, total, finalize, ...rest } = args;
 
     // Generate invoice number if not provided
     const invoiceNumber = rest.invoiceNumber || `INV-${Date.now()}`;
@@ -159,7 +161,7 @@ export const create = mutation({
 
     const invoiceId = await ctx.db.insert("invoices", {
       userId,
-      clientId,
+      companyId,
       invoiceNumber,
       currency,
       total,
@@ -177,7 +179,7 @@ export const createInvoice = mutation({
   args: {
     userId: v.string(),
     invoiceNumber: v.string(),
-    clientId: v.id("companies"),
+    companyId: v.id("companies"),
     currency: v.string(),
     total: v.number(),
     status: v.optional(
@@ -202,8 +204,8 @@ export const createInvoice = mutation({
     // Optional: ensure invoice numbers are unique per user
     const existing = await ctx.db
       .query("invoices")
-      .withIndex("by_user_invoiceNumber", (q) =>
-        q.eq("userId", args.userId).eq("invoiceNumber", args.invoiceNumber)
+      .withIndex("by_invoiceNumber", (q) =>
+        q.eq("invoiceNumber", args.invoiceNumber)
       )
       .first();
     if (existing)
@@ -211,8 +213,8 @@ export const createInvoice = mutation({
 
     const invoiceId = await ctx.db.insert("invoices", {
       userId: args.userId,
+      companyId: args.companyId,
       invoiceNumber: args.invoiceNumber,
-      clientId: args.clientId,
       status,
       currency: args.currency,
       total: args.total,
@@ -228,16 +230,16 @@ export const listInvoices = query({
   args: {
     userId: v.string(),
     limit: v.optional(v.number()),
-    clientId: v.optional(v.id("companies")),
+    companyId: v.optional(v.id("companies")),
   },
-  handler: async (ctx, { userId, limit, clientId }) => {
+  handler: async (ctx, { userId, limit, companyId }) => {
     let query = ctx.db
       .query("invoices")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc");
 
-    if (clientId) {
-      query = query.filter((q) => q.eq(q.field("clientId"), clientId));
+    if (companyId) {
+      query = query.filter((q) => q.eq(q.field("companyId"), companyId));
     }
 
     const res = await query.take(limit ?? 50);
@@ -245,24 +247,24 @@ export const listInvoices = query({
   },
 });
 
-// Duplicate the last invoice for a specific client
+// Duplicate the last invoice for a specific company
 export const duplicateLastInvoice = mutation({
   args: {
     userId: v.string(),
-    clientId: v.id("companies"),
+    companyId: v.id("companies"),
     invoiceNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Find the last invoice for this client
+    // Find the last invoice for this company
     const lastInvoice = await ctx.db
       .query("invoices")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => q.eq(q.field("clientId"), args.clientId))
+      .withIndex("by_user_company", (q) =>
+        q.eq("userId", args.userId).eq("companyId", args.companyId)
+      )
       .order("desc")
       .first();
-
     if (!lastInvoice) {
-      throw new Error("No previous invoice found for this client");
+      throw new Error("No previous invoice found for this company");
     }
 
     // Generate new invoice number if not provided
@@ -271,8 +273,8 @@ export const duplicateLastInvoice = mutation({
     // Create a new invoice with the same details but as draft
     const newInvoiceId = await ctx.db.insert("invoices", {
       userId: args.userId,
+      companyId: args.companyId,
       invoiceNumber,
-      clientId: args.clientId,
       currency: lastInvoice.currency,
       total: lastInvoice.total,
       status: "draft",
@@ -316,5 +318,77 @@ export const changeStatus = mutation({
 
     await ctx.db.patch(args.invoiceId, updates);
     return { success: true };
+  },
+});
+
+// Generate PDF for an invoice (for authenticated users in the frontend)
+export const generatePDF = action({
+  args: { invoiceId: v.id("invoices") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    // Fetch the invoice
+    const invoice = await ctx.runQuery(api.invoices.get, {
+      id: args.invoiceId,
+    });
+
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+
+    // Verify the invoice belongs to the user
+    if (invoice.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+
+    // Fetch the company
+    const company = await ctx.runQuery(api.companies.get, {
+      id: invoice.companyId,
+    });
+
+    if (!company) {
+      throw new Error("Company not found");
+    }
+
+    // Fetch "my company" (the invoice issuer)
+    const myCompany = await ctx.runQuery(api.companies.getMyCompany);
+
+    console.log(myCompany);
+
+    // Generate PDF
+    const pdfBuffer = generateInvoicePDF({
+      invoice: {
+        _creationTime: invoice._creationTime,
+        invoiceNumber: invoice.invoiceNumber,
+        status: invoice.status,
+        currency: invoice.currency,
+        total: invoice.total,
+      },
+      clientCompany: {
+        name: company.name,
+        siret: company.siret,
+        email: company.email,
+        address: company.address,
+        city: company.city,
+        zip: company.zip,
+        website: company.website,
+      },
+      myCompany: myCompany
+        ? {
+            name: myCompany.name,
+            siret: myCompany.siret,
+            email: myCompany.email,
+            address: myCompany.address,
+            city: myCompany.city,
+            zip: myCompany.zip,
+            website: myCompany.website,
+          }
+        : undefined,
+    });
+
+    return pdfBuffer;
   },
 });

@@ -1,5 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { FileText, Mail, MapPin, ExternalLink, MoreVertical, Edit, Trash2 } from "lucide-react";
+import {
+  FileText,
+  Mail,
+  MapPin,
+  ExternalLink,
+  MoreVertical,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import { getFaviconUrl } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -9,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
-interface Client {
+interface Company {
   _id: string;
   name: string;
   email?: string;
@@ -24,12 +32,12 @@ interface Invoice {
   status: string;
   total: number;
   currency: string;
-  clientId: string;
+  companyId: string;
 }
 
 interface InvoiceRowProps {
   invoice: Invoice;
-  client: Client | undefined;
+  company: Company | undefined;
   onEdit: (invoiceId: string) => void;
   onDelete?: (invoiceId: string) => void;
 }
@@ -58,8 +66,13 @@ const formatCurrency = (amount: number, currency: string) => {
   }).format(amount);
 };
 
-export function InvoiceRow({ invoice, client, onEdit, onDelete }: InvoiceRowProps) {
-  const faviconUrl = client?.website ? getFaviconUrl(client.website) : null;
+export function InvoiceRow({
+  invoice,
+  company,
+  onEdit,
+  onDelete,
+}: InvoiceRowProps) {
+  const faviconUrl = company?.website ? getFaviconUrl(company.website) : null;
 
   return (
     <div className="flex items-center gap-4 p-5 bg-card border rounded-lg hover:shadow-md hover:border-primary/20 transition-all duration-200 group">
@@ -73,7 +86,7 @@ export function InvoiceRow({ invoice, client, onEdit, onDelete }: InvoiceRowProp
           <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-muted bg-muted flex items-center justify-center">
             <img
               src={faviconUrl}
-              alt={client?.name}
+              alt={company?.name}
               className="w-10 h-10 object-contain"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
@@ -98,7 +111,9 @@ export function InvoiceRow({ invoice, client, onEdit, onDelete }: InvoiceRowProp
         {/* Left: Invoice Details */}
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-lg">{invoice.invoiceNumber}</span>
+            <span className="font-semibold text-lg">
+              {invoice.invoiceNumber}
+            </span>
             <span
               className={`text-xs font-medium px-2 py-0.5 rounded-full border ${getStatusColor(
                 invoice.status
@@ -115,22 +130,24 @@ export function InvoiceRow({ invoice, client, onEdit, onDelete }: InvoiceRowProp
         {/* Center: Client Details */}
         <div className="space-y-1 md:col-span-2">
           <div className="font-medium text-base flex items-center gap-2">
-            {client?.name || "Unknown Client"}
-            {client?.website && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
+            {company?.name || "Unknown Company"}
+            {company?.website && (
+              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+            )}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {client?.email && (
+            {company?.email && (
               <div className="flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5" />
-                <span>{client.email}</span>
+                <span>{company.email}</span>
               </div>
             )}
-            {client?.city && (
+            {company?.city && (
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
                 <span>
-                  {client.city}
-                  {client.state && `, ${client.state}`}
+                  {company.city}
+                  {company.state && `, ${company.state}`}
                 </span>
               </div>
             )}
@@ -180,4 +197,3 @@ export function InvoiceRow({ invoice, client, onEdit, onDelete }: InvoiceRowProp
     </div>
   );
 }
-
