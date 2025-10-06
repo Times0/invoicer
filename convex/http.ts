@@ -174,10 +174,12 @@ const getCompanies = httpAction(async (ctx, req) => {
 
   const url = new URL(req.url);
   const companyId = url.searchParams.get("companyId");
+  const companyName = url.searchParams.get("companyName");
 
   const companies = await ctx.runQuery(api.companies.listCompanies, {
     userId,
-    companyId: companyId as any,
+    companyId: companyId || undefined,
+    companyName: companyName || undefined,
   });
   return Response.json({ companies });
 });
@@ -188,7 +190,7 @@ const getInvoicePDF = httpAction(async (ctx, req) => {
 
   // Extract invoiceId from query params
   const url = new URL(req.url);
-  const invoiceId = url.searchParams.get("id");
+  const invoiceId = url.searchParams.get("invoiceId");
 
   if (!invoiceId) {
     return new Response("Missing invoiceId", { status: 400 });

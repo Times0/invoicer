@@ -130,9 +130,23 @@ export function InvoiceRow({
         {/* Center: Client Details */}
         <div className="space-y-1 md:col-span-2">
           <div className="font-medium text-base flex items-center gap-2">
-            {company?.name || "Unknown Company"}
-            {company?.website && (
-              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+            {company?.website ? (
+              <Link
+                to={
+                  company.website.startsWith("http")
+                    ? company.website
+                    : `https://${company.website}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {company.name || "Unknown Company"}
+                <ExternalLink className="h-3 w-3 text-muted-foreground ml-1" />
+              </Link>
+            ) : (
+              <span>{company?.name || "Unknown Company"}</span>
             )}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -140,15 +154,6 @@ export function InvoiceRow({
               <div className="flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5" />
                 <span>{company.email}</span>
-              </div>
-            )}
-            {company?.city && (
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5" />
-                <span>
-                  {company.city}
-                  {company.state && `, ${company.state}`}
-                </span>
               </div>
             )}
           </div>
@@ -162,7 +167,6 @@ export function InvoiceRow({
             <Button
               variant="ghost"
               size="icon"
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="h-5 w-5" />
