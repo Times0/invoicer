@@ -189,10 +189,10 @@ export function InvoiceRow({
                   e.preventDefault();
                   onDelete(invoice._id);
                 }}
-                className="text-red-600 focus:text-red-600"
+                className="text-destructive focus:text-destructive-foreground"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+                <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                <span className="text-destructive">Delete</span>
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
