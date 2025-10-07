@@ -12,14 +12,14 @@
 			"**/.vscode/**/*",
 			"**/index.html",
 			"**/vite.config.js",
-			"!**/src/routeTree.gen.ts"
+			"!**/src/routeTree.gen.ts",
+			"!**/src/components/ui/**/*"
 		]
 	},
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true,
-			"react": true
+			"recommended": true
 		}
 	},
 	"javascript": {
